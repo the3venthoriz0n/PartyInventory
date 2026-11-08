@@ -1,0 +1,108 @@
+{
+	"modName": "PartyInventory",
+	"displayName": "Party Inventory",
+	"minMcmVersion": 9,
+	"cursorFillMode": "topToBottom",
+	"pages": [{
+		"pageDisplayName": "Settings",
+		"cursorFillMode": "topToBottom",
+		"content": [
+			{
+				"text": "Controls",
+				"type": "header"
+			},
+			{
+				"id": "iOpenKey:Controls",
+				"text": "Open inventory key",
+				"type": "keymap",
+				"ignoreConflicts": true,
+				"help": "Look at another player in your party and press this key to open their inventory. Default: Y.",
+				"valueOptions": {
+					"sourceType": "ModSettingInt"
+				}
+			},
+			{
+				"id": "iToggleKey:Controls",
+				"text": "Allow / forbid access key",
+				"type": "keymap",
+				"ignoreConflicts": true,
+				"help": "Press this key to allow or forbid other players from opening your inventory. Default: H.",
+				"valueOptions": {
+					"sourceType": "ModSettingInt"
+				}
+			},
+			{
+				"text": "Access",
+				"type": "header"
+			},
+			{
+				"id": "bAllowOthers:Access",
+				"text": "Let other players open my inventory",
+				"type": "toggle",
+				"help": "When on, party members near you can open your inventory. Your party members must also have this mod. Off by default.",
+				"valueOptions": {
+					"sourceType": "ModSettingBool"
+				}
+			},
+			{
+				"id": "bRequireConsent:Access",
+				"text": "Only open players who allow it",
+				"type": "toggle",
+				"help": "When on, you can only open the inventory of players who turned on the option above. Leave this on unless you know why not.",
+				"valueOptions": {
+					"sourceType": "ModSettingBool"
+				}
+			},
+			{
+				"id": "iMode:Access",
+				"text": "Menu mode",
+				"type": "enum",
+				"help": "Which item menu opens. 'Take and give' lets you both take items and give items, like a follower's inventory.",
+				"valueOptions": {
+					"options": [
+						"Loot",
+						"Steal",
+						"Pickpocket",
+						"Take and give"
+					],
+					"sourceType": "ModSettingInt"
+				}
+			},
+			{
+				"id": "iMaxDistance:Access",
+				"text": "Maximum distance",
+				"type": "slider",
+				"help": "How close you must be to another player to open their inventory, in game units. Vanilla activation reach is about 150 to 250.",
+				"valueOptions": {
+					"min": 100,
+					"max": 1000,
+					"step": 25,
+					"formatString": "{0}",
+					"sourceType": "ModSettingInt"
+				}
+			},
+			{
+				"text": "General",
+				"type": "header"
+			},
+			{
+				"id": "bNotifications:General",
+				"text": "Show notifications",
+				"type": "toggle",
+				"help": "Show a message when someone opens or closes your inventory, and for errors when you try to open one.",
+				"valueOptions": {
+					"sourceType": "ModSettingBool"
+				}
+			},
+			{
+				"id": "bDebug:General",
+				"text": "Debug logging",
+				"type": "toggle",
+				"help": "Write more detail to PartyInventory.log.",
+				"valueOptions": {
+					"sourceType": "ModSettingBool"
+				}
+			}
+		]
+	}]
+}

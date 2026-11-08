@@ -42,7 +42,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
     SKSE::Init(a_skse);
     SetupLog();
-    spdlog::info("PartyInventory 0.1.0 loading");
+    spdlog::info("PartyInventory 0.2.0 loading");
 
     PartyInventory::Config::Load();
     if (PartyInventory::Config::Get().debug) {

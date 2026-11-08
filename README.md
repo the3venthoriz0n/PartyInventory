@@ -4,7 +4,7 @@ Open another player's inventory like a container, and let party members open you
 Skyrim Together Reborn (STR). No accept / ready / confirm rounds: look at a friend, press one key,
 and a vanilla item menu opens showing their inventory. Take items, give items, close the menu.
 
-Status: **0.1.0 prototype.** It compiles; it has not been played yet. See "Known unknowns".
+Status: **0.2.0 prototype.** It compiles; it has not been played yet. See "Known unknowns".
 
 ## Requirements
 
@@ -22,21 +22,34 @@ Status: **0.1.0 prototype.** It compiles; it has not been played yet. See "Known
 
 ## Install
 
-Copy `Data\SKSE\Plugins\PartyInventory.dll` and `PartyInventory.ini` into your Skyrim `Data` folder
-(or install the zip through Vortex).
+Install the zip through Vortex, or copy its `Data` folder into your Skyrim `Data` folder. It adds
+`SKSE\Plugins\PartyInventory.dll` and the settings files under `MCM\Config\PartyInventory\`.
 
 ## Use
 
 | Key (default) | Does |
 |---|---|
-| **G** | Open the inventory of the player under your crosshair |
+| **Y** | Open the inventory of the player under your crosshair |
 | **H** | Allow or forbid other players from opening *your* inventory (off by default, saved to the INI) |
 
 1. You and your friend both press **H** once, so each of you allows the other. A HUD message confirms it.
 2. Look at your friend and press **G**. Their inventory opens.
 3. When someone opens yours, you get a HUD notification, and another when they close it.
 
-Keys, the menu mode, the maximum distance and consent are configurable in `PartyInventory.ini`.
+## Settings
+
+Everything is editable in the **SkyUI Mod Configuration Menu** under "Party Inventory": both keys, whether
+others may open your inventory, whether you need their consent, the menu mode, the maximum distance,
+notifications and debug logging. Changes apply within about a second, with no restart.
+
+This uses **MCM Helper**, which has to be installed for the menu to appear. If you do not use SkyUI or
+MCM Helper, edit the files by hand instead (also applied within a second):
+
+- defaults, shipped with the mod: `Data\MCM\Config\PartyInventory\settings.ini`
+- your overrides, written by the menu or by the **H** key: `Data\MCM\Settings\PartyInventory.ini`
+  (a value here wins over the default; create the file if you want to set something yourself)
+
+Keys are DirectInput scan codes: 21 = Y, 35 = H.
 
 ## How it works
 
@@ -68,6 +81,8 @@ Log: `Documents\My Games\Skyrim Special Edition\SKSE\PartyInventory.log` (set `D
 - `Open refused: ... is not a mapped player proxy`: the STR messaging layer does not know that actor
   as a player yet (the relay is missing, or you are not connected).
 - `has not allowed access`: your friend needs PartyInventory and must press the toggle key.
+- The "Party Inventory" page is missing from the MCM: MCM Helper is not installed, or it did not pick
+  up `Data\MCM\Config\PartyInventory\config.json`. Edit the settings files by hand meanwhile.
 - Menu opens but items do not move: check the server log for `Rejected player-to-player inventory change`
   and read the `sameParty` / `inRange` / `allowSetting` values.
 

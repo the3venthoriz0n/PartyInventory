@@ -189,9 +189,25 @@ namespace PartyInventory::StrLink
 
         g_announcer = std::jthread([](std::stop_token a_stop) {
             auto last = std::chrono::steady_clock::now();
+            auto lastReload = last;
+            bool lastAllow = Config::AllowOthers();
             while (!a_stop.stop_requested()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 const auto now = std::chrono::steady_clock::now();
+
+                // Pick up changes made in the MCM (or by hand) about once a second.
+                if (now - lastReload >= std::chrono::seconds(1)) {
+                    Config::ReloadIfChanged();
+                    lastReload = now;
+                }
+
+                // Tell everyone right away when "allow others" changes.
+                const bool allow = Config::AllowOthers();
+                if (allow != lastAllow) {
+                    lastAllow = allow;
+                    g_announceSoon.store(true);
+                }
+
                 if (g_announceSoon.exchange(false) || now - last >= kAnnounceInterval) {
                     BroadcastAccessState();
                     last = now;

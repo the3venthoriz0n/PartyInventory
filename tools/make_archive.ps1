@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.0"
+    [string]$Version = "0.2.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +14,7 @@ if (-not (Test-Path -LiteralPath $dll)) { throw "DLL not found: $dll. Build firs
 # The DLL must not depend on spdlog.dll / fmt.dll (they do not exist in a Skyrim install).
 $bytes = [System.IO.File]::ReadAllBytes($dll)
 $ascii = [System.Text.Encoding]::ASCII.GetString($bytes)
-if (-not $ascii.Contains("PartyInventory 0.1.0 loading") -and $Version -eq "0.1.0") { throw "Version marker not found in DLL." }
+if (-not $ascii.Contains("PartyInventory $Version loading")) { throw "Version marker for $Version not found in DLL." }
 
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }

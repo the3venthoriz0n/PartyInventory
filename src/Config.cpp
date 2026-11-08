@@ -7,84 +7,187 @@ namespace PartyInventory::Config
 {
     namespace
     {
-        Settings          g_settings{};
-        std::atomic<bool> g_allowOthers{ false };
+        using FileTime = std::optional<std::filesystem::file_time_type>;
 
-        std::string IniPath()
+        std::mutex g_mutex;
+        Settings   g_settings{};
+        FileTime   g_defaultsTime;
+        FileTime   g_userTime;
+
+        std::filesystem::path DataDirectory()
         {
-            // GetPrivateProfile* resolves relative paths against the Windows directory, so always
-            // use an absolute path next to the plugin DLL.
+            // The DLL is in <Data>\SKSE\Plugins; derive <Data> from its location.
             HMODULE module = nullptr;
             GetModuleHandleExA(
                 GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                reinterpret_cast<LPCSTR>(&IniPath),
+                reinterpret_cast<LPCSTR>(&DataDirectory),
                 &module);
 
             char buffer[MAX_PATH]{};
-            if (!module || GetModuleFileNameA(module, buffer, MAX_PATH) == 0) {
-                return "Data\\SKSE\\Plugins\\PartyInventory.ini";
+            if (module && GetModuleFileNameA(module, buffer, MAX_PATH) != 0) {
+                return std::filesystem::path(buffer).parent_path().parent_path().parent_path();
             }
-
-            std::filesystem::path path(buffer);
-            path.replace_extension(".ini");
-            return path.string();
+            return std::filesystem::path("Data");
         }
 
-        std::uint32_t ReadUInt(const std::string& a_path, const char* a_section, const char* a_key, std::uint32_t a_default)
+        std::filesystem::path DefaultsPath()
         {
-            // Accept decimal or 0x-prefixed hex.
+            return DataDirectory() / "MCM" / "Config" / "PartyInventory" / "settings.ini";
+        }
+
+        std::filesystem::path UserPath()
+        {
+            return DataDirectory() / "MCM" / "Settings" / "PartyInventory.ini";
+        }
+
+        FileTime StampOf(const std::filesystem::path& a_path)
+        {
+            std::error_code ec;
+            const auto      time = std::filesystem::last_write_time(a_path, ec);
+            return ec ? FileTime{} : FileTime{ time };
+        }
+
+        // GetPrivateProfile* resolves relative paths against the Windows directory, so always pass
+        // absolute paths. Returns nothing if the key is not present in the file.
+        std::optional<std::uint32_t> ReadValue(const std::filesystem::path& a_path, const char* a_section, const char* a_key)
+        {
             char text[64]{};
-            char fallback[32]{};
-            std::snprintf(fallback, sizeof(fallback), "%u", a_default);
-            GetPrivateProfileStringA(a_section, a_key, fallback, text, sizeof(text), a_path.c_str());
+            GetPrivateProfileStringA(a_section, a_key, "\x01", text, sizeof(text), a_path.string().c_str());
+            if (text[0] == '\x01' || text[0] == '\0') {
+                return std::nullopt;
+            }
             try {
+                // Decimal, or 0x-prefixed hex. A leading minus is not meaningful for any setting here.
                 return static_cast<std::uint32_t>(std::stoul(text, nullptr, 0));
             } catch (...) {
-                return a_default;
+                return std::nullopt;
             }
+        }
+
+        // The user's value wins over the shipped default, which wins over the built-in default.
+        std::uint32_t Value(
+            const std::filesystem::path& a_defaults,
+            const std::filesystem::path& a_user,
+            const char*                  a_section,
+            const char*                  a_key,
+            std::uint32_t                a_builtIn)
+        {
+            if (const auto user = ReadValue(a_user, a_section, a_key)) {
+                return *user;
+            }
+            if (const auto shipped = ReadValue(a_defaults, a_section, a_key)) {
+                return *shipped;
+            }
+            return a_builtIn;
+        }
+
+        Settings ReadAll(const std::filesystem::path& a_defaults, const std::filesystem::path& a_user)
+        {
+            const Settings d{};
+            Settings       s{};
+            s.openKey = Value(a_defaults, a_user, "Controls", "iOpenKey", d.openKey);
+            s.toggleKey = Value(a_defaults, a_user, "Controls", "iToggleKey", d.toggleKey);
+            s.allowOthers = Value(a_defaults, a_user, "Access", "bAllowOthers", d.allowOthers ? 1 : 0) != 0;
+            s.requireConsent = Value(a_defaults, a_user, "Access", "bRequireConsent", d.requireConsent ? 1 : 0) != 0;
+            s.mode = std::min<std::uint32_t>(Value(a_defaults, a_user, "Access", "iMode", d.mode), 3);
+            s.maxDistance = Value(a_defaults, a_user, "Access", "iMaxDistance", d.maxDistance);
+            s.notifications = Value(a_defaults, a_user, "General", "bNotifications", d.notifications ? 1 : 0) != 0;
+            s.debug = Value(a_defaults, a_user, "General", "bDebug", d.debug ? 1 : 0) != 0;
+            return s;
         }
     }
 
     void Load()
     {
-        const auto path = IniPath();
-        Settings   s{};
+        const auto defaults = DefaultsPath();
+        const auto user = UserPath();
+        const auto settings = ReadAll(defaults, user);
 
-        s.openKey = ReadUInt(path, "Controls", "OpenKey", s.openKey);
-        s.toggleKey = ReadUInt(path, "Controls", "ToggleAccessKey", s.toggleKey);
-        s.requireConsent = ReadUInt(path, "Access", "RequireConsent", s.requireConsent ? 1 : 0) != 0;
-        s.mode = std::min<std::uint32_t>(ReadUInt(path, "Access", "Mode", s.mode), 3);
-        s.maxDistance = ReadUInt(path, "Access", "MaxDistance", s.maxDistance);
-        s.notifications = ReadUInt(path, "General", "Notifications", s.notifications ? 1 : 0) != 0;
-        s.debug = ReadUInt(path, "General", "Debug", s.debug ? 1 : 0) != 0;
+        {
+            std::scoped_lock lock(g_mutex);
+            g_settings = settings;
+            g_defaultsTime = StampOf(defaults);
+            g_userTime = StampOf(user);
+        }
 
-        g_settings = s;
-        g_allowOthers.store(ReadUInt(path, "Access", "AllowOthers", 0) != 0);
-
+        spdlog::set_level(settings.debug ? spdlog::level::debug : spdlog::level::info);
         spdlog::info(
-            "Config loaded from {}: openKey=0x{:02X} toggleKey=0x{:02X} requireConsent={} mode={} maxDistance={} allowOthers={}",
-            path,
-            s.openKey,
-            s.toggleKey,
-            s.requireConsent,
-            s.mode,
-            s.maxDistance,
-            g_allowOthers.load());
+            "Settings loaded (defaults: {} [{}], user: {} [{}]): openKey=0x{:02X} toggleKey=0x{:02X} allowOthers={} requireConsent={} mode={} maxDistance={}",
+            defaults.string(),
+            StampOf(defaults) ? "found" : "missing",
+            user.string(),
+            StampOf(user) ? "found" : "missing",
+            settings.openKey,
+            settings.toggleKey,
+            settings.allowOthers,
+            settings.requireConsent,
+            settings.mode,
+            settings.maxDistance);
     }
 
-    const Settings& Get() noexcept
+    bool ReloadIfChanged()
     {
+        const auto defaults = DefaultsPath();
+        const auto user = UserPath();
+        const auto defaultsTime = StampOf(defaults);
+        const auto userTime = StampOf(user);
+
+        {
+            std::scoped_lock lock(g_mutex);
+            if (defaultsTime == g_defaultsTime && userTime == g_userTime) {
+                return false;
+            }
+        }
+
+        const auto settings = ReadAll(defaults, user);
+
+        bool changed = false;
+        {
+            std::scoped_lock lock(g_mutex);
+            g_defaultsTime = defaultsTime;
+            g_userTime = userTime;
+            changed = !(settings == g_settings);
+            g_settings = settings;
+        }
+
+        if (changed) {
+            spdlog::set_level(settings.debug ? spdlog::level::debug : spdlog::level::info);
+            spdlog::info(
+                "Settings changed: openKey=0x{:02X} toggleKey=0x{:02X} allowOthers={} requireConsent={} mode={} maxDistance={}",
+                settings.openKey,
+                settings.toggleKey,
+                settings.allowOthers,
+                settings.requireConsent,
+                settings.mode,
+                settings.maxDistance);
+        }
+        return changed;
+    }
+
+    Settings Get()
+    {
+        std::scoped_lock lock(g_mutex);
         return g_settings;
     }
 
-    bool AllowOthers() noexcept
+    bool AllowOthers()
     {
-        return g_allowOthers.load();
+        std::scoped_lock lock(g_mutex);
+        return g_settings.allowOthers;
     }
 
     void SetAllowOthers(bool a_allow)
     {
-        g_allowOthers.store(a_allow);
-        WritePrivateProfileStringA("Access", "AllowOthers", a_allow ? "1" : "0", IniPath().c_str());
+        const auto user = UserPath();
+
+        std::error_code ec;
+        std::filesystem::create_directories(user.parent_path(), ec);
+        if (!WritePrivateProfileStringA("Access", "bAllowOthers", a_allow ? "1" : "0", user.string().c_str())) {
+            spdlog::error("Could not write {}", user.string());
+        }
+
+        // Apply immediately; the next ReloadIfChanged() will see the new file time and reread harmlessly.
+        std::scoped_lock lock(g_mutex);
+        g_settings.allowOthers = a_allow;
     }
 }
