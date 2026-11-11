@@ -4,7 +4,7 @@ Open another player's inventory like a container, and let party members open you
 Skyrim Together Reborn (STR). No accept / ready / confirm rounds: look at a friend, press one key,
 and a vanilla item menu opens showing their inventory. Take items, give items, close the menu.
 
-Status: **0.2.0 prototype.** It compiles; it has not been played yet. See "Known unknowns".
+Status: **0.2.1 prototype.** It compiles; it has not been played yet. See "Known unknowns".
 
 ## Requirements
 
@@ -42,7 +42,9 @@ Everything is editable in the **SkyUI Mod Configuration Menu** under "Party Inve
 others may open your inventory, whether you need their consent, the menu mode, the maximum distance,
 notifications and debug logging. Changes apply within about a second, with no restart.
 
-This uses **MCM Helper**, which has to be installed for the menu to appear. If you do not use SkyUI or
+This uses **MCM Helper**, which has to be installed for the menu to appear. The mod ships a small
+`PartyInventory.esp` (light plugin, one quest, no gameplay) that MCM Helper needs to list the page; enable it in your
+plugin list. If you do not use SkyUI or
 MCM Helper, edit the files by hand instead (also applied within a second):
 
 - defaults, shipped with the mod: `Data\MCM\Config\PartyInventory\settings.ini`
@@ -81,8 +83,8 @@ Log: `Documents\My Games\Skyrim Special Edition\SKSE\PartyInventory.log` (set `D
 - `Open refused: ... is not a mapped player proxy`: the STR messaging layer does not know that actor
   as a player yet (the relay is missing, or you are not connected).
 - `has not allowed access`: your friend needs PartyInventory and must press the toggle key.
-- The "Party Inventory" page is missing from the MCM: MCM Helper is not installed, or it did not pick
-  up `Data\MCM\Config\PartyInventory\config.json`. Edit the settings files by hand meanwhile.
+- The "Party Inventory" page is missing from the MCM: MCM Helper is not installed, `PartyInventory.esp` is
+  not enabled, or it did not pick up `Data\MCM\Config\PartyInventory\config.json`. Edit the settings files by hand meanwhile.
 - Menu opens but items do not move: check the server log for `Rejected player-to-player inventory change`
   and read the `sameParty` / `inRange` / `allowSetting` values.
 
