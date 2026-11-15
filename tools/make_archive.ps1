@@ -16,7 +16,17 @@ $bytes = [System.IO.File]::ReadAllBytes($dll)
 $ascii = [System.Text.Encoding]::ASCII.GetString($bytes)
 if (-not $ascii.Contains("PartyInventory $Version loading")) { throw "Version marker for $Version not found in DLL." }
 
+# Never replace an earlier build: if the target already exists, add a _yyyyMMdd-HHmmss suffix before the extension.
+function Get-UniquePath([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $Path }
+    $dir  = Split-Path -Parent $Path
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+    $ext  = [System.IO.Path]::GetExtension($Path)
+    return (Join-Path $dir ("{0}_{1}{2}" -f $base, (Get-Date -Format "yyyyMMdd-HHmmss"), $ext))
+}
+
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
-if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+$zip = Get-UniquePath $zip
 Compress-Archive -Path $data -DestinationPath $zip -CompressionLevel Optimal -Force
-Write-Host "Created $zip"
+Write-Host ""
+Write-Host "Archive written to: $zip"

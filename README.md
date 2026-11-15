@@ -96,6 +96,8 @@ build_release.bat          (needs Visual Studio 2022+/2026, CMake, and vcpkg at 
 make_archive.bat           (creates dist\PartyInventory-<version>.zip)
 ```
 
+Packaging never overwrites or deletes an earlier build: if the zip name is already in `dist`, the new one gets a `_yyyyMMdd-HHmmss` suffix (for example `PartyInventory-0.2.1_20261114-160500.zip`), so versions sit side by side for rollback; the script prints the final path.
+
 ## License
 
 GPL-3.0-or-later (it links CommonLibSSE-NG, which is GPL-3.0-or-later). See `COPYING`.
