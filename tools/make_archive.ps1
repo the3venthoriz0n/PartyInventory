@@ -28,5 +28,8 @@ function Get-UniquePath([string]$Path) {
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 $zip = Get-UniquePath $zip
 Compress-Archive -Path $data -DestinationPath $zip -CompressionLevel Optimal -Force
+. (Join-Path $PSScriptRoot "legal_docs.ps1")
+Add-LegalDocs -Zip $zip -Prefix "Data/Docs/PartyInventory" -Version $Version
+
 Write-Host ""
 Write-Host "Archive written to: $zip"
